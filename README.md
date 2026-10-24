@@ -18,6 +18,18 @@ A bench is a name from `benches/` (`example`) or a path to a YAML file. Progress
 is logged to stderr, so stdout is only the JSON report. The recipes run the CLI
 from source with `tsx`; `just build` compiles to `dist/` (the `datechbench` bin).
 
+## Available benches
+
+| Bench | Coverage |
+| --- | --- |
+| [example](benches/example.yaml) | 10-question smoke test |
+| [argocd](benches/argocd.yaml) | 200 questions on Argo CD v3.4.12, progressing through eight difficulty bands from foundations to controller-source reasoning |
+
+Run `just run argocd` or `just save argocd`. Update its `models` list to compare
+your models. The [Argo CD answer key](docs/argocd.md) includes explanations,
+commit-pinned official sources for every answer, and guidance for interpreting
+scores. This bench uses shuffled choices and independent question sessions.
+
 ## Models
 
 Bare model names (`deepseek-v4-flash-0731`) go to the local inference router

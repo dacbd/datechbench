@@ -14,6 +14,13 @@ export const questionSchema = z
       .string()
       .regex(/^[A-Z]$/)
       .describe('Letter of the correct choice, e.g. "B".'),
+    reference: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        'Where the answer can be verified, e.g. a documentation URL, a source file link, or a command such as "kubectl logs --help" or "man 1 tar". Never shown to the model.',
+      ),
   })
   .refine((q) => q.answer.charCodeAt(0) - 65 < q.choices.length, {
     message: 'answer must be the letter of one of the choices',
@@ -24,9 +31,17 @@ export type Question = z.infer<typeof questionSchema>;
 export const testModeSchema = z.enum(['shuffle', 'isolated']);
 export type TestMode = z.infer<typeof testModeSchema>;
 
+const benchDateSchema = z.union([z.iso.date(), z.iso.datetime({ offset: true })]);
+
 export const benchSchema = z.strictObject({
   version: z.literal('v1').describe('Bench type: multiple choice.'),
   ...baseBenchShape,
+  created_at: benchDateSchema
+    .optional()
+    .describe('When the bench was first written, as an ISO 8601 date (2026-10-24) or datetime.'),
+  last_updated_at: benchDateSchema
+    .optional()
+    .describe('When the questions were last changed, as an ISO 8601 date (2026-10-24) or datetime.'),
   modes: z
     .array(testModeSchema)
     .refine((m) => new Set(m).size === m.length, { message: 'modes must not repeat' })
