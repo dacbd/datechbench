@@ -54,10 +54,13 @@ export const benchSchema = z.strictObject({
 export type V1Bench = z.infer<typeof benchSchema>;
 
 export const failureReasonSchema = z
-  .enum(['wrong_answer', 'no_tool_call', 'wrong_tool', 'invalid_tool_input', 'request_error'])
+  .enum(['wrong_answer', 'no_tool_call', 'wrong_tool', 'invalid_tool_input', 'output_limit', 'request_error'])
   .describe(
-    'Why a question was not answered correctly. wrong_answer: valid choice, but not the right one. no_tool_call: the model replied without calling the answer tool. wrong_tool: it called a tool that is not the answer tool. invalid_tool_input: it called the answer tool with input that failed validation (e.g. a letter that is not a choice). request_error: the request itself failed (network, auth, server).',
+    'Why a question was not answered correctly. wrong_answer: valid choice, but not the right one. no_tool_call: the model replied without calling the answer tool. wrong_tool: it called a tool that is not the answer tool. invalid_tool_input: it called the answer tool with input that failed validation (e.g. a letter that is not a choice). output_limit: generation stopped at the output token limit before a valid answer (e.g. thinking ran long). request_error: the request itself failed (network, auth, server, context window exceeded). output_limit and request_error mark the whole run as a failure.',
   );
+
+// Failures that say more about the run than the model's knowledge.
+export const RUN_FAILING_REASONS: FailureReason[] = ['output_limit', 'request_error'];
 export type FailureReason = z.infer<typeof failureReasonSchema>;
 
 export const tokenUsageSchema = z.strictObject({
@@ -90,6 +93,10 @@ export const questionResultSchema = z
     correct: z.boolean(),
     failureReason: failureReasonSchema.optional().describe('Present if and only if correct is false.'),
     error: z.string().optional().describe('Detail for tool/request failures.'),
+    finishReason: z
+      .string()
+      .nullable()
+      .describe('Why generation stopped, as reported by the AI SDK (stop, length, tool-calls, ...); null if the request failed.'),
     durationMs: z.number().nonnegative().describe('Time the model request took.'),
     tokens: tokenUsageSchema,
     transcript: z
@@ -104,14 +111,53 @@ export const questionResultSchema = z
   });
 export type QuestionResult = z.infer<typeof questionResultSchema>;
 
-export const modelResultSchema = z.strictObject({
-  model: z.string(),
+// One model's run. Saved as it goes, so `questions` may be shorter than `total`
+// if the run did not finish.
+export const resultSchema = z.strictObject({
+  modes: z.array(testModeSchema),
   correct: z.number().int().nonnegative(),
-  total: z.number().int().positive(),
-  score: z.number().min(0).max(1),
-  questions: z.array(questionResultSchema),
+  total: z.number().int().positive().describe('Questions in the bench.'),
+  score: z.number().min(0).max(1).describe('correct / total.'),
+  questions: z.array(questionResultSchema).describe('Questions asked so far, in order.'),
   stats: statsSchema,
 });
-
-export const resultSchema = z.array(modelResultSchema);
 export type V1Results = z.infer<typeof resultSchema>;
+
+const scoreStatsSchema = z.strictObject({
+  mean: z.number().min(0).max(1),
+  min: z.number().min(0).max(1),
+  max: z.number().min(0).max(1),
+});
+
+export const summaryRowSchema = z.strictObject({
+  provider: z.string(),
+  model: z.string(),
+  modes: z.array(testModeSchema),
+  runs: z.number().int().positive(),
+  successes: z.number().int().nonnegative(),
+  failures: z.number().int().nonnegative(),
+  score: scoreStatsSchema.nullable().describe('Over successful runs; null if there are none.'),
+  meanStats: statsSchema.nullable().describe('Per-run means over successful runs; null if there are none.'),
+  latest: z
+    .strictObject({
+      file: z.string().describe('Run file, relative to this summary.'),
+      startedAt: z.iso.datetime(),
+      status: z.enum(['success', 'failure']),
+      failure: z.string().nullable().describe('Run failure reason, or null for a success.'),
+      score: z.number().min(0).max(1).nullable().describe('null for a failure, whose score would be partial.'),
+    })
+    .describe('The most recent run, whatever its status.'),
+});
+
+export const summarySchema = z.strictObject({
+  $schema: z.string().optional(),
+  version: z.literal('v1'),
+  benches: z.array(
+    z.strictObject({
+      name: z.string(),
+      questions: z.number().int().nonnegative().describe('Question count as of the most recent run.'),
+      models: z.array(summaryRowSchema).describe('One row per model and mode set, best mean score first.'),
+    }),
+  ),
+});
+export type V1Summary = z.infer<typeof summarySchema>;

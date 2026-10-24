@@ -1,7 +1,8 @@
 node_modules
 dist
 .env
-results
+# Run files hold full transcripts; only results/<version>/summary.json and schemas are tracked.
+results/*/runs/
 # Benches live in S3 (just push/pull); only the example is tracked.
 benches/*
 !benches/example.yaml

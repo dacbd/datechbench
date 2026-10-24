@@ -1,0 +1,5 @@
+{
+  "$schema": "./summary.schema.json",
+  "version": "v1",
+  "benches": []
+}

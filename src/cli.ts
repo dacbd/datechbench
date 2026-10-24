@@ -1,17 +1,23 @@
 #!/usr/bin/env node
-import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import type { Report, Verbosity } from './core/bench.js';
+import type { Verbosity } from './core/bench.js';
 import { loadBench } from './core/load.js';
 import { getBenchType, listBenchTypes } from './core/registry.js';
+import { recordRun } from './core/runs.js';
+import { buildSummary } from './core/summary.js';
 
 const usage = `Usage:
-  datechbench --bench <file.yaml> [--output <file.json>] [-v | -vv | -vvv]
-  datechbench --schema <version>    print the JSON Schema for a bench type's YAML
-  datechbench --list                list bench types
+  datechbench --bench <file.yaml> [--results <dir>] [-v | -vv | -vvv]
+  datechbench --build-summary [--results <dir>]   rebuild <dir>/<version>/summary.json from saved runs
+  datechbench --schema <version>                  print the JSON Schema for a bench type's YAML
+  datechbench --list                              list bench types
 
-Verbosity (report contents):
+Each model's run is saved as it goes to
+  <dir>/<version>/runs/<bench>/<yyyy-mm-dd_HHMM>.<success|failure>.<provider>.<model>.json
+(<dir> defaults to results). The exit code is 1 if any run failed.
+
+Verbosity (stdout only; run files always hold everything):
   (none)  per-model summary only
   -v      plus each question's id and correct
   -vv     plus full question results
@@ -21,7 +27,8 @@ async function main() {
   const { values } = parseArgs({
     options: {
       bench: { type: 'string', short: 'b' },
-      output: { type: 'string', short: 'o' },
+      results: { type: 'string', default: 'results' },
+      'build-summary': { type: 'boolean' },
       schema: { type: 'string' },
       list: { type: 'boolean' },
       verbose: { type: 'boolean', short: 'v', multiple: true },
@@ -38,26 +45,30 @@ async function main() {
     console.log(JSON.stringify(z.toJSONSchema(getBenchType(values.schema).benchSchema, { io: 'input' }), null, 2));
     return;
   }
+  if (values['build-summary']) {
+    for (const type of listBenchTypes()) {
+      const { path, runs, skipped } = await buildSummary(values.results, type);
+      console.error(`${path}: ${runs} runs${skipped ? `, ${skipped} skipped` : ''}`);
+    }
+    return;
+  }
   if (values.help || !values.bench) {
     console.log(usage);
     process.exit(values.help ? 0 : 1);
   }
 
   const { type, bench } = await loadBench(values.bench);
-  const results = type.resultSchema.parse(await type.run(bench));
-  const report: Report = {
-    version: type.version,
-    bench: bench.name,
-    ranAt: new Date().toISOString(),
-    results: type.view(results, verbosity),
-  };
-  const json = JSON.stringify(report, null, 2);
-  if (values.output) {
-    await writeFile(values.output, json + '\n');
-    console.error(`Results written to ${values.output}`);
-  } else {
-    console.log(json);
+  const runs = [];
+  for (const model of bench.models) {
+    runs.push(await recordRun({ type, bench, benchFile: values.bench, model, resultsDir: values.results }));
   }
+  const report = runs.map(({ path, run: { $schema: _, results, ...run } }) => ({
+    file: path,
+    ...run,
+    results: results === null ? null : type.view(results, verbosity),
+  }));
+  console.log(JSON.stringify(report, null, 2));
+  if (runs.some(({ run }) => run.status === 'failure')) process.exitCode = 1;
 }
 
 main().catch((err) => {

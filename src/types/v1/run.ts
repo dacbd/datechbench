@@ -1,7 +1,7 @@
 import { generateText, type ModelMessage } from 'ai';
 import { formatDuration, log } from '../../core/log.js';
 import { resolveModel } from '../../core/models.js';
-import type { Question, QuestionResult, Stats, V1Bench, V1Results } from './schema.js';
+import { type Question, type QuestionResult, RUN_FAILING_REASONS, type Stats, type V1Bench, type V1Results } from './schema.js';
 import { ANSWER_TOOL, answerTools } from './tool.js';
 
 const DEFAULT_SYSTEM = 'Answer each multiple choice question by calling the answer_question tool.';
@@ -40,12 +40,14 @@ async function askQuestion(
   const q = shuffle ? shuffleQuestion(original) : original;
   const started = performance.now();
   let tokens = { input: 0, output: 0, reasoning: 0, total: 0 };
+  let finishReason: string | null = null;
   const prompt: ModelMessage = { role: 'user', content: formatPrompt(q) };
   const transcript: ModelMessage[] = [prompt];
   const base = () => ({
     id,
     choices: q.choices,
     expected: q.answer,
+    finishReason,
     durationMs: Math.round(performance.now() - started),
     tokens,
     transcript,
@@ -59,6 +61,7 @@ async function askQuestion(
       toolChoice: 'required',
     });
     const u = result.usage;
+    finishReason = result.finishReason;
     tokens = {
       input: u.inputTokens ?? 0,
       output: u.outputTokens ?? 0,
@@ -84,6 +87,15 @@ async function askQuestion(
     }
     session.push(...transcript);
     const call = result.toolCalls[0];
+    if (result.finishReason === 'length' && !(call?.toolName === ANSWER_TOOL && !call.invalid)) {
+      return {
+        ...base(),
+        chosen: null,
+        correct: false,
+        failureReason: 'output_limit',
+        error: 'Generation hit the output token limit before a valid answer.',
+      };
+    }
     if (!call) return { ...base(), chosen: null, correct: false, failureReason: 'no_tool_call' };
     if (call.toolName !== ANSWER_TOOL) {
       return { ...base(), chosen: null, correct: false, failureReason: 'wrong_tool', error: `called ${call.toolName}` };
@@ -118,41 +130,64 @@ const computeStats = (questions: QuestionResult[], wallTimeMs: number): Stats =>
   };
 };
 
-export async function run(bench: V1Bench): Promise<V1Results> {
+// Runs one model, reporting the results so far after every question so a crash loses at most the one in flight.
+export async function run(
+  bench: V1Bench,
+  model: string,
+  progress: (results: V1Results) => void,
+): Promise<V1Results> {
   const system = bench.system ?? DEFAULT_SYSTEM;
   const shuffle = bench.modes.includes('shuffle');
   const isolated = bench.modes.includes('isolated');
-  log(
-    `start bench="${bench.name}" version=${bench.version} models=[${bench.models.join(', ')}] ` +
-      `modes=[${bench.modes.join(', ')}] questions=${bench.questions.length}`,
-  );
-  const results: V1Results = [];
-  for (const model of bench.models) {
-    const modelStarted = performance.now();
-    const questions: QuestionResult[] = [];
-    // Default: one session per model, so each question sees all earlier ones.
-    // Isolated: a fresh, empty session for every question.
-    const shared: ModelMessage[] = [];
-    for (const [i, q] of bench.questions.entries()) {
-      const session = isolated ? [] : shared;
-      const id = q.id ?? String(i + 1);
-      const label = `[${model}] ${i + 1}/${bench.questions.length} ${id}`;
-      log(`ask  ${label}`);
-      const result = await askQuestion(model, system, q, id, session, shuffle);
-      log(
-        `done ${label} ${result.correct ? 'correct' : `incorrect (${result.failureReason})`} ` +
-          `in ${formatDuration(result.durationMs)}, ${result.tokens.output} tokens (${result.tokens.reasoning} thinking)`,
-      );
-      questions.push(result);
-    }
+  const total = bench.questions.length;
+  log(`start bench="${bench.name}" version=${bench.version} model=${model} modes=[${bench.modes.join(', ')}] questions=${total}`);
+  const started = performance.now();
+  const questions: QuestionResult[] = [];
+  const snapshot = (): V1Results => {
     const correct = questions.filter((q) => q.correct).length;
-    const stats = computeStats(questions, performance.now() - modelStarted);
+    return {
+      modes: bench.modes,
+      correct,
+      total,
+      score: correct / total,
+      questions: [...questions],
+      stats: computeStats(questions, performance.now() - started),
+    };
+  };
+  progress(snapshot());
+  // Default: one session for the whole run, so each question sees all earlier ones.
+  // Isolated: a fresh, empty session for every question.
+  const shared: ModelMessage[] = [];
+  for (const [i, q] of bench.questions.entries()) {
+    const session = isolated ? [] : shared;
+    const id = q.id ?? String(i + 1);
+    const label = `[${model}] ${i + 1}/${total} ${id}`;
+    log(`ask  ${label}`);
+    const result = await askQuestion(model, system, q, id, session, shuffle);
     log(
-      `finish [${model}] ${correct}/${questions.length} wall=${formatDuration(stats.wallTimeMs)} ` +
-        `api=${formatDuration(stats.apiTimeMs)} tokens=${stats.totalTokens} ` +
-        `(in=${stats.inputTokens} out=${stats.outputTokens}) avg=${stats.avgTokensPerSecond.toFixed(1)} tok/s`,
+      `done ${label} ${result.correct ? 'correct' : `incorrect (${result.failureReason})`} ` +
+        `in ${formatDuration(result.durationMs)}, ${result.tokens.output} tokens (${result.tokens.reasoning} thinking)`,
     );
-    results.push({ model, correct, total: questions.length, score: correct / questions.length, questions, stats });
+    questions.push(result);
+    progress(snapshot());
   }
+  const results = snapshot();
+  const { stats } = results;
+  log(
+    `finish [${model}] ${results.correct}/${total} wall=${formatDuration(stats.wallTimeMs)} ` +
+      `api=${formatDuration(stats.apiTimeMs)} tokens=${stats.totalTokens} ` +
+      `(in=${stats.inputTokens} out=${stats.outputTokens}) avg=${stats.avgTokensPerSecond.toFixed(1)} tok/s`,
+  );
   return results;
+}
+
+// A finished run still fails if any question failed for reasons outside the model's knowledge.
+export function failure(results: V1Results): string | undefined {
+  const failed = results.questions.filter((q) => q.failureReason && RUN_FAILING_REASONS.includes(q.failureReason));
+  if (failed.length === 0) return undefined;
+  const counts = RUN_FAILING_REASONS.map((r) => [r, failed.filter((q) => q.failureReason === r).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([r, n]) => `${n} ${r}`)
+    .join(', ');
+  return `${failed.length} of ${results.total} questions failed (${counts}): ${failed.map((q) => q.id).join(', ')}`;
 }

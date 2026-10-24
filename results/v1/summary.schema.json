@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "benches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Question count as of the most recent run."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "modes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "shuffle",
+                      "isolated"
+                    ]
+                  }
+                },
+                "runs": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "successes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "failures": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "score": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "mean": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "max": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "mean",
+                        "min",
+                        "max"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Over successful runs; null if there are none."
+                },
+                "meanStats": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "wallTimeMs": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Elapsed real time for the whole run."
+                        },
+                        "apiTimeMs": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time spent waiting on model requests, summed over questions."
+                        },
+                        "inputTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Prompt tokens across all questions, including earlier turns of each session."
+                        },
+                        "outputTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Generated tokens across all questions, including reasoning tokens."
+                        },
+                        "totalTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Input plus output tokens across all questions."
+                        },
+                        "avgTokensPerSecond": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Generated (output) tokens divided by api time; 0 if there was no api time."
+                        }
+                      },
+                      "required": [
+                        "wallTimeMs",
+                        "apiTimeMs",
+                        "inputTokens",
+                        "outputTokens",
+                        "totalTokens",
+                        "avgTokensPerSecond"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Per-run means over successful runs; null if there are none."
+                },
+                "latest": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "type": "string",
+                      "description": "Run file, relative to this summary."
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success",
+                        "failure"
+                      ]
+                    },
+                    "failure": {
+                      "description": "Run failure reason, or null for a success.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "score": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "null for a failure, whose score would be partial."
+                    }
+                  },
+                  "required": [
+                    "file",
+                    "startedAt",
+                    "status",
+                    "failure",
+                    "score"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The most recent run, whatever its status."
+                }
+              },
+              "required": [
+                "provider",
+                "model",
+                "modes",
+                "runs",
+                "successes",
+                "failures",
+                "score",
+                "meanStats",
+                "latest"
+              ],
+              "additionalProperties": false
+            },
+            "description": "One row per model and mode set, best mean score first."
+          }
+        },
+        "required": [
+          "name",
+          "questions",
+          "models"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "benches"
+  ],
+  "additionalProperties": false
+}
