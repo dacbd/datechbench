@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 results
+# Benches live in S3 (just push/pull); only the example is tracked.
+benches/*
+!benches/example.yaml

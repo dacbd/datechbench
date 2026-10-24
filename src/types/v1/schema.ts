@@ -90,6 +90,11 @@ export const questionResultSchema = z
     error: z.string().optional().describe('Detail for tool/request failures.'),
     durationMs: z.number().nonnegative().describe('Time the model request took.'),
     tokens: tokenUsageSchema,
+    transcript: z
+      .array(z.unknown())
+      .describe(
+        'Messages exchanged for this question: the prompt, the model response, and the tool result. Without isolated mode, earlier questions\' transcripts precede it in the conversation.',
+      ),
   })
   .refine((r) => r.correct === (r.failureReason === undefined), {
     message: 'failureReason must be set exactly when correct is false',

@@ -12,7 +12,14 @@ just run example           # run a bench, printing results to stdout
 just save example          # run a bench, saving to results/<name>-<timestamp>.json
 just all                   # run every bench in benches/, saving each to results/
 just check                 # typecheck
+just pull                  # download benches from s3:datechbench/benches
+just push                  # upload local benches to s3:datechbench/benches
 ```
+
+Only `benches/example.yaml` is tracked in git; the real benches live in the
+`datechbench` bucket on the tailnet RustFS and move through the `s3` rclone
+remote. `push` and `pull` copy without deleting, and never overwrite a newer
+file on the other side. Extra flags pass through to rclone (`just push --dry-run`).
 
 A bench is a name from `benches/` (`example`) or a path to a YAML file. Progress
 is logged to stderr, so stdout is only the JSON report. The recipes run the CLI

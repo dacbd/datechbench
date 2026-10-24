@@ -1,6 +1,7 @@
 import { defineBenchType } from '../../core/bench.js';
 import { run } from './run.js';
 import { benchSchema, resultSchema } from './schema.js';
+import { view } from './view.js';
 
 export const v1 = defineBenchType({
   version: 'v1',
@@ -8,4 +9,5 @@ export const v1 = defineBenchType({
   benchSchema,
   resultSchema,
   run,
+  view,
 });

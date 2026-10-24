@@ -40,18 +40,21 @@ async function askQuestion(
   const q = shuffle ? shuffleQuestion(original) : original;
   const started = performance.now();
   let tokens = { input: 0, output: 0, reasoning: 0, total: 0 };
+  const prompt: ModelMessage = { role: 'user', content: formatPrompt(q) };
+  const transcript: ModelMessage[] = [prompt];
   const base = () => ({
     id,
     choices: q.choices,
     expected: q.answer,
     durationMs: Math.round(performance.now() - started),
     tokens,
+    transcript,
   });
   try {
     const result = await generateText({
       model: resolveModel(model),
       system,
-      messages: [...session, { role: 'user', content: formatPrompt(q) }],
+      messages: [...session, prompt],
       tools: answerTools(q),
       toolChoice: 'required',
     });
@@ -62,11 +65,11 @@ async function askQuestion(
       reasoning: u.outputTokenDetails.reasoningTokens ?? 0,
       total: u.totalTokens ?? 0,
     };
-    session.push({ role: 'user', content: formatPrompt(q) }, ...result.response.messages);
+    transcript.push(...result.response.messages);
     // The answer tool has no executor, so close every call with a result to keep
     // the transcript valid for the next question.
     if (result.toolCalls.length > 0) {
-      session.push({
+      transcript.push({
         role: 'tool',
         content: result.toolCalls.map((c) => ({
           type: 'tool-result' as const,
@@ -79,6 +82,7 @@ async function askQuestion(
         })),
       });
     }
+    session.push(...transcript);
     const call = result.toolCalls[0];
     if (!call) return { ...base(), chosen: null, correct: false, failureReason: 'no_tool_call' };
     if (call.toolName !== ANSWER_TOOL) {
@@ -131,7 +135,7 @@ export async function run(bench: V1Bench): Promise<V1Results> {
       const session = isolated ? [] : shared;
       const id = q.id ?? String(i + 1);
       const label = `[${model}] ${i + 1}/${bench.questions.length} ${id}`;
-      log(`ask ${label}`);
+      log(`ask  ${label}`);
       const result = await askQuestion(model, system, q, id, session, shuffle);
       log(
         `done ${label} ${result.correct ? 'correct' : `incorrect (${result.failureReason})`} ` +

@@ -20,14 +20,20 @@ export const baseBenchShape = {
 const baseBenchSchema = z.object({ version: z.string(), ...baseBenchShape });
 export type BaseBench = z.infer<typeof baseBenchSchema>;
 
+// How much of the results end up in the report, from the CLI's -v flags.
+// 0: summary only, 1: per-question id/correct, 2: full question results, 3: plus api transcripts.
+export type Verbosity = 0 | 1 | 2 | 3;
+
 // A bench type owns everything about one `version`: what its YAML looks like,
-// what its results look like, and how to execute it.
+// what its results look like, and how to execute it. `run` always records full
+// detail; `view` trims it to the requested verbosity for the report.
 export type BenchType<Version extends string, Bench extends BaseBench, Results> = {
   version: Version;
   description: string;
   benchSchema: z.ZodType<Bench>;
   resultSchema: z.ZodType<Results>;
   run(bench: Bench): Promise<Results>;
+  view(results: Results, verbosity: Verbosity): unknown;
 };
 
 export const defineBenchType = <
@@ -45,6 +51,7 @@ export type AnyBenchType = {
   benchSchema: z.ZodType<BaseBench>;
   resultSchema: z.ZodType<unknown>;
   run(bench: BaseBench): Promise<unknown>;
+  view(results: unknown, verbosity: Verbosity): unknown;
 };
 
 export const reportSchema = z.strictObject({
