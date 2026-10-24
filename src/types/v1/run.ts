@@ -107,10 +107,12 @@ async function askQuestion(
 
 const computeStats = (questions: QuestionResult[], wallTimeMs: number): Stats => {
   const apiTimeMs = questions.reduce((sum, q) => sum + q.durationMs, 0);
-  const sumTokens = (key: 'output' | 'total') => questions.reduce((sum, q) => sum + q.tokens[key], 0);
+  const sumTokens = (key: 'input' | 'output' | 'total') => questions.reduce((sum, q) => sum + q.tokens[key], 0);
   return {
     wallTimeMs: Math.round(wallTimeMs),
     apiTimeMs,
+    inputTokens: sumTokens('input'),
+    outputTokens: sumTokens('output'),
     totalTokens: sumTokens('total'),
     avgTokensPerSecond: apiTimeMs > 0 ? Math.round((sumTokens('output') / (apiTimeMs / 1000)) * 10) / 10 : 0,
   };
@@ -147,7 +149,8 @@ export async function run(bench: V1Bench): Promise<V1Results> {
     const stats = computeStats(questions, performance.now() - modelStarted);
     log(
       `finish [${model}] ${correct}/${questions.length} wall=${formatDuration(stats.wallTimeMs)} ` +
-        `api=${formatDuration(stats.apiTimeMs)} tokens=${stats.totalTokens} avg=${stats.avgTokensPerSecond.toFixed(1)} tok/s`,
+        `api=${formatDuration(stats.apiTimeMs)} tokens=${stats.totalTokens} ` +
+        `(in=${stats.inputTokens} out=${stats.outputTokens}) avg=${stats.avgTokensPerSecond.toFixed(1)} tok/s`,
     );
     results.push({ model, correct, total: questions.length, score: correct / questions.length, questions, stats });
   }

@@ -71,6 +71,8 @@ export type TokenUsage = z.infer<typeof tokenUsageSchema>;
 export const statsSchema = z.strictObject({
   wallTimeMs: z.number().nonnegative().describe('Elapsed real time for the whole run.'),
   apiTimeMs: z.number().nonnegative().describe('Time spent waiting on model requests, summed over questions.'),
+  inputTokens: z.number().int().nonnegative().describe('Prompt tokens across all questions, including earlier turns of each session.'),
+  outputTokens: z.number().int().nonnegative().describe('Generated tokens across all questions, including reasoning tokens.'),
   totalTokens: z.number().int().nonnegative().describe('Input plus output tokens across all questions.'),
   avgTokensPerSecond: z
     .number()
