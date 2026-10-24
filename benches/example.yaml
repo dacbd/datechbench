@@ -1,0 +1,55 @@
+version: v1
+name: example
+modes: [shuffle]
+description: A tiny smoke-test bench.
+models:
+  - deepseek-v4-flash-0731
+questions:
+  - id: http-status-not-found
+    question: Which HTTP status code means "Not Found"?
+    choices: ["200", "301", "404", "500"]
+    answer: C
+  - id: git-undo-commit
+    question: Which command moves HEAD back one commit but keeps your changes staged?
+    choices:
+      - git reset --hard HEAD~1
+      - git reset --soft HEAD~1
+      - git revert HEAD
+      - git checkout HEAD~1
+    answer: B
+  - id: sql-unique-rows
+    question: Which SQL keyword removes duplicate rows from a SELECT result?
+    choices: [UNIQUE, DISTINCT, DIFFERENT, SINGLE]
+    answer: B
+  - id: tcp-vs-udp
+    question: Which transport protocol guarantees ordered, reliable delivery of bytes?
+    choices: [UDP, ICMP, TCP, ARP]
+    answer: C
+  - id: big-o-binary-search
+    question: What is the time complexity of binary search on a sorted array of n elements?
+    choices: [O(1), O(log n), O(n), O(n log n)]
+    answer: B
+  - id: dns-record-ipv4
+    question: Which DNS record type maps a hostname to an IPv4 address?
+    choices: [AAAA, CNAME, MX, A]
+    answer: D
+  - id: unix-permissions
+    question: What does `chmod 755 file` set for the file's owner?
+    choices: ["Read only", "Read and write", "Read, write and execute", "Execute only"]
+    answer: C
+  - id: http-idempotent
+    question: Which HTTP method is defined as non-idempotent?
+    choices: [GET, PUT, DELETE, POST]
+    answer: D
+  - id: docker-image-vs-container
+    question: In Docker, what is a container in relation to an image?
+    choices:
+      - A running (or stopped) instance created from an image
+      - A text file describing how to build an image
+      - A registry that stores images
+      - A volume attached to an image
+    answer: A
+  - id: tls-port
+    question: What is the default TCP port for HTTPS?
+    choices: ["80", "22", "443", "8443"]
+    answer: C
