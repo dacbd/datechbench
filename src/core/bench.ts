@@ -12,7 +12,7 @@ export const baseBenchShape = {
     .array(z.string().min(1))
     .min(1)
     .describe(
-      'Models to run. Bare names (e.g. "gemma4-12b") use the local inference router; ids with a provider prefix (e.g. "anthropic/claude-sonnet-4.5") use the Vercel AI Gateway.',
+      'Models to run. Bare names (e.g. "gemma4-12b") use the local inference router; "<provider>/<model>" ids use that models.dev provider (e.g. "anthropic/claude-sonnet-4-5", or "vercel/anthropic/claude-sonnet-4.5" through the Vercel AI Gateway).',
     ),
   system: z
     .string()
@@ -62,7 +62,7 @@ export const makeRunSchema = <Results>(version: string, resultSchema: z.ZodType<
           .string()
           .describe('sha256 of the bench definition minus its model list; changes whenever questions, modes or the system prompt do.'),
       }),
-      provider: z.string().describe('"local" for the inference router, otherwise the gateway provider prefix.'),
+      provider: z.string().describe('"local" for the inference router, otherwise the models.dev provider id.'),
       model: z.string().describe('Model id as written in the bench.'),
       startedAt: z.iso.datetime(),
       finishedAt: z.iso.datetime().nullable().describe('null if the process died mid-run.'),

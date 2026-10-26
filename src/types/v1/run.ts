@@ -54,7 +54,7 @@ async function askQuestion(
   });
   try {
     const result = await generateText({
-      model: resolveModel(model),
+      model: await resolveModel(model),
       system,
       messages: [...session, prompt],
       tools: answerTools(q),

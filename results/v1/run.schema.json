@@ -33,7 +33,7 @@
     },
     "provider": {
       "type": "string",
-      "description": "\"local\" for the inference router, otherwise the gateway provider prefix."
+      "description": "\"local\" for the inference router, otherwise the models.dev provider id."
     },
     "model": {
       "type": "string",

@@ -37,6 +37,28 @@ const benchHash = (bench: BaseBench) =>
 
 const errorDetail = (err: unknown) => (err instanceof Error ? (err.stack ?? err.message) : String(err));
 
+// Interrupt hooks for every run in flight. Runs can execute in parallel, so one
+// signal handler saves all of them before exiting.
+const inFlight = new Set<(signal: NodeJS.Signals) => void>();
+const onSignal = (signal: NodeJS.Signals) => {
+  for (const interrupt of inFlight) interrupt(signal);
+  process.exit(signal === 'SIGINT' ? 130 : 143);
+};
+const trackInterrupt = (interrupt: (signal: NodeJS.Signals) => void) => {
+  if (inFlight.size === 0) {
+    process.on('SIGINT', onSignal);
+    process.on('SIGTERM', onSignal);
+  }
+  inFlight.add(interrupt);
+  return () => {
+    inFlight.delete(interrupt);
+    if (inFlight.size === 0) {
+      process.off('SIGINT', onSignal);
+      process.off('SIGTERM', onSignal);
+    }
+  };
+};
+
 // Runs one model through the bench, saving to
 // <results>/<version>/runs/<bench>/<yyyy-mm-dd_HHMM>.<success|failure>.<provider>.<model>.json.
 // The file is rewritten after every progress report under the failure name, so
@@ -90,13 +112,10 @@ export async function recordRun(opts: {
     if (run.status === 'success') rmSync(pathFor('failure'), { force: true });
   };
 
-  const onSignal = (signal: NodeJS.Signals) => {
+  const untrack = trackInterrupt((signal) => {
     finish({ reason: 'interrupted', message: `Received ${signal}.` });
     log(`interrupted [${model}], saved ${pathFor(run.status)}`);
-    process.exit(signal === 'SIGINT' ? 130 : 143);
-  };
-  process.once('SIGINT', onSignal);
-  process.once('SIGTERM', onSignal);
+  });
 
   save();
   try {
@@ -110,12 +129,11 @@ export async function recordRun(opts: {
     log(`error [${model}] ${err instanceof Error ? err.message : String(err)}`);
     finish({ reason: 'harness_error', message: errorDetail(err) });
   } finally {
-    process.off('SIGINT', onSignal);
-    process.off('SIGTERM', onSignal);
+    untrack();
   }
 
   const checked = makeRunSchema(type.version, type.resultSchema).safeParse(run);
-  if (!checked.success) log(`warning: run does not match its schema:\n${z.prettifyError(checked.error)}`);
+  if (!checked.success) log(`warning [${model}] run does not match its schema:\n${z.prettifyError(checked.error)}`);
   log(`${run.status} [${model}] saved ${pathFor(run.status)}`);
   return { path: pathFor(run.status), run };
 }

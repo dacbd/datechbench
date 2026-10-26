@@ -26,8 +26,10 @@ overwrite a newer file on the other side. Extra flags pass through to rclone
 summarize runs from every machine. If a run was pushed mid-way, its leftover
 `failure` file is ignored once the finished copy is present.
 
-A bench is a name from `benches/` (`example`) or a path to a YAML file. Progress
-is logged to stderr, so stdout is only the JSON report. The recipes run the CLI
+A bench is a name from `benches/` (`example`) or a path to a YAML file. Its
+models run up to two at a time; change that with `-p`/`--parallel`
+(`just run argocd -p 1`). Progress is logged to stderr, tagged with each model,
+so stdout is only the JSON report (in the bench's model order). The recipes run the CLI
 from source with `tsx`; `just build` compiles to `dist/` (the `datechbench` bin).
 
 ## Results
@@ -66,9 +68,30 @@ scores. This bench uses shuffled choices and independent question sessions.
 
 Bare model names (`deepseek-v4-flash-0731`) go to the local inference router
 from `../infra` (`https://inference.int.dacbd.dev/v1`, OpenAI-compatible).
-Override with `DATECHBENCH_BASE_URL` / `DATECHBENCH_API_KEY`. Names with a
-provider prefix (`anthropic/claude-sonnet-4.5`) go through the Vercel AI Gateway
-and need `AI_GATEWAY_API_KEY`.
+Override with `DATECHBENCH_BASE_URL` / `DATECHBENCH_API_KEY`.
+
+Anything else is `<provider>/<model>`, using the provider and model ids from
+[models.dev](https://models.dev). The catalog supplies each provider's base URL,
+key env vars and AI SDK package; it is cached in `.cache/models.dev.json` and
+refreshed daily.
+
+```yaml
+models:
+  - qwen3.8-27b                              # local router
+  - anthropic/claude-sonnet-4-5              # ANTHROPIC_API_KEY
+  - openrouter/anthropic/claude-sonnet-4.5   # OPENROUTER_API_KEY
+  - vercel/anthropic/claude-sonnet-4.5       # Vercel AI Gateway, AI_GATEWAY_API_KEY
+  - fireworks-ai/accounts/fireworks/models/kimi-k3
+```
+
+Model ids are each provider's own (note `claude-sonnet-4-5` vs `claude-sonnet-4.5`
+above); copy them from the provider's page on models.dev.
+
+OpenAI-compatible providers (most of the catalog) need nothing extra. The
+Anthropic, OpenAI, Google, OpenRouter and Vercel gateway packages are installed;
+any other provider tells you which package to `npm install`. All model keys are
+checked before a run starts, and a model missing from the catalog or marked
+without tool calling gets a warning.
 
 ## Bench types
 

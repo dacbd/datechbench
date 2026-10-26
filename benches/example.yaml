@@ -4,6 +4,7 @@ modes: [shuffle]
 description: A tiny smoke-test bench.
 models:
   - deepseek-v4-flash-0731
+  - qwen3.8-27b
 questions:
   - id: http-status-not-found
     question: Which HTTP status code means "Not Found"?

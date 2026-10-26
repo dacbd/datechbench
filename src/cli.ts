@@ -3,19 +3,21 @@ import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import type { Verbosity } from './core/bench.js';
 import { loadBench } from './core/load.js';
+import { resolveModel } from './core/models.js';
 import { getBenchType, listBenchTypes } from './core/registry.js';
 import { recordRun } from './core/runs.js';
 import { buildSummary } from './core/summary.js';
 
 const usage = `Usage:
-  datechbench --bench <file.yaml> [--results <dir>] [-v | -vv | -vvv]
+  datechbench --bench <file.yaml> [--results <dir>] [--parallel <n>] [-v | -vv | -vvv]
   datechbench --build-summary [--results <dir>]   rebuild <dir>/<version>/summary.json from saved runs
   datechbench --schema <version>                  print the JSON Schema for a bench type's YAML
   datechbench --list                              list bench types
 
 Each model's run is saved as it goes to
   <dir>/<version>/runs/<bench>/<yyyy-mm-dd_HHMM>.<success|failure>.<provider>.<model>.json
-(<dir> defaults to results). The exit code is 1 if any run failed.
+(<dir> defaults to results). Up to --parallel models (default 2) run at once;
+the report keeps the bench's model order. The exit code is 1 if any run failed.
 
 Verbosity (stdout only; run files always hold everything):
   (none)  per-model summary only
@@ -23,11 +25,26 @@ Verbosity (stdout only; run files always hold everything):
   -vv     plus full question results
   -vvv    plus the api transcript for each question`;
 
+// Runs fn over items with at most `limit` in flight, keeping results in input order.
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
       bench: { type: 'string', short: 'b' },
       results: { type: 'string', default: 'results' },
+      parallel: { type: 'string', short: 'p', default: '2' },
       'build-summary': { type: 'boolean' },
       schema: { type: 'string' },
       list: { type: 'boolean' },
@@ -57,11 +74,16 @@ async function main() {
     process.exit(values.help ? 0 : 1);
   }
 
+  const parallel = Number(values.parallel);
+  if (!Number.isInteger(parallel) || parallel < 1) throw new Error(`--parallel must be a positive integer, got "${values.parallel}"`);
+
   const { type, bench } = await loadBench(values.bench);
-  const runs = [];
-  for (const model of bench.models) {
-    runs.push(await recordRun({ type, bench, benchFile: values.bench, model, resultsDir: values.results }));
-  }
+  const benchFile = values.bench;
+  // Fail fast on an unknown provider or a missing key, rather than once per question.
+  await Promise.all(bench.models.map(resolveModel));
+  const runs = await mapLimit(bench.models, parallel, (model) =>
+    recordRun({ type, bench, benchFile, model, resultsDir: values.results }),
+  );
   const report = runs.map(({ path, run: { $schema: _, results, ...run } }) => ({
     file: path,
     ...run,

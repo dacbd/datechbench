@@ -1,5 +1,259 @@
 {
   "$schema": "./summary.schema.json",
   "version": "v1",
-  "benches": []
+  "benches": [
+    {
+      "name": "argo-workflows",
+      "questions": 200,
+      "models": [
+        {
+          "provider": "local",
+          "model": "deepseek-v4-flash-0731",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 3,
+          "successes": 2,
+          "failures": 1,
+          "score": {
+            "mean": 0.9325,
+            "min": 0.93,
+            "max": 0.935
+          },
+          "meanStats": {
+            "wallTimeMs": 730272,
+            "apiTimeMs": 729419,
+            "inputTokens": 5388302,
+            "outputTokens": 37620,
+            "totalTokens": 5425922,
+            "avgTokensPerSecond": 51.5
+          },
+          "latest": {
+            "file": "runs/argo-workflows/2026-10-25_1840.success.local.deepseek-v4-flash-0731.json",
+            "startedAt": "2026-10-25T18:40:57.461Z",
+            "status": "success",
+            "failure": null,
+            "score": 0.93
+          }
+        },
+        {
+          "provider": "local",
+          "model": "qwen3.8-27b",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 1,
+          "successes": 1,
+          "failures": 0,
+          "score": {
+            "mean": 0.92,
+            "min": 0.92,
+            "max": 0.92
+          },
+          "meanStats": {
+            "wallTimeMs": 2557234,
+            "apiTimeMs": 2556381,
+            "inputTokens": 4588553,
+            "outputTokens": 26582,
+            "totalTokens": 4615135,
+            "avgTokensPerSecond": 10.4
+          },
+          "latest": {
+            "file": "runs/argo-workflows/2026-10-25_1840.success.local.qwen3.8-27b.json",
+            "startedAt": "2026-10-25T18:40:57.504Z",
+            "status": "success",
+            "failure": null,
+            "score": 0.92
+          }
+        }
+      ]
+    },
+    {
+      "name": "argocd",
+      "questions": 200,
+      "models": [
+        {
+          "provider": "local",
+          "model": "qwen3.8-27b",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 1,
+          "successes": 1,
+          "failures": 0,
+          "score": {
+            "mean": 0.965,
+            "min": 0.965,
+            "max": 0.965
+          },
+          "meanStats": {
+            "wallTimeMs": 1992475,
+            "apiTimeMs": 1991709,
+            "inputTokens": 3710231,
+            "outputTokens": 23011,
+            "totalTokens": 3733242,
+            "avgTokensPerSecond": 11.6
+          },
+          "latest": {
+            "file": "runs/argocd/2026-10-25_1923.success.local.qwen3.8-27b.json",
+            "startedAt": "2026-10-25T19:23:35.569Z",
+            "status": "success",
+            "failure": null,
+            "score": 0.965
+          }
+        },
+        {
+          "provider": "local",
+          "model": "deepseek-v4-flash-0731",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 3,
+          "successes": 2,
+          "failures": 1,
+          "score": {
+            "mean": 0.9475,
+            "min": 0.945,
+            "max": 0.95
+          },
+          "meanStats": {
+            "wallTimeMs": 938783,
+            "apiTimeMs": 937869,
+            "inputTokens": 6287892,
+            "outputTokens": 44729,
+            "totalTokens": 6332620,
+            "avgTokensPerSecond": 47.7
+          },
+          "latest": {
+            "file": "runs/argocd/2026-10-25_1923.success.local.deepseek-v4-flash-0731.json",
+            "startedAt": "2026-10-25T19:23:35.560Z",
+            "status": "success",
+            "failure": null,
+            "score": 0.95
+          }
+        }
+      ]
+    },
+    {
+      "name": "example",
+      "questions": 10,
+      "models": [
+        {
+          "provider": "local",
+          "model": "deepseek-v4-flash-0731",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 1,
+          "successes": 1,
+          "failures": 0,
+          "score": {
+            "mean": 1,
+            "min": 1,
+            "max": 1
+          },
+          "meanStats": {
+            "wallTimeMs": 13785,
+            "apiTimeMs": 13769,
+            "inputTokens": 10082,
+            "outputTokens": 734,
+            "totalTokens": 10816,
+            "avgTokensPerSecond": 53.3
+          },
+          "latest": {
+            "file": "runs/example/2026-10-25_1956.success.local.deepseek-v4-flash-0731.json",
+            "startedAt": "2026-10-25T19:56:48.838Z",
+            "status": "success",
+            "failure": null,
+            "score": 1
+          }
+        },
+        {
+          "provider": "local",
+          "model": "qwen3.8-27b",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 1,
+          "successes": 1,
+          "failures": 0,
+          "score": {
+            "mean": 1,
+            "min": 1,
+            "max": 1
+          },
+          "meanStats": {
+            "wallTimeMs": 96375,
+            "apiTimeMs": 96355,
+            "inputTokens": 12906,
+            "outputTokens": 1478,
+            "totalTokens": 14384,
+            "avgTokensPerSecond": 15.3
+          },
+          "latest": {
+            "file": "runs/example/2026-10-25_1956.success.local.qwen3.8-27b.json",
+            "startedAt": "2026-10-25T19:56:48.847Z",
+            "status": "success",
+            "failure": null,
+            "score": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "kubectl",
+      "questions": 200,
+      "models": [
+        {
+          "provider": "local",
+          "model": "deepseek-v4-flash-0731",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 3,
+          "successes": 2,
+          "failures": 1,
+          "score": {
+            "mean": 0.9025,
+            "min": 0.895,
+            "max": 0.91
+          },
+          "meanStats": {
+            "wallTimeMs": 1025800,
+            "apiTimeMs": 1024613,
+            "inputTokens": 5137872,
+            "outputTokens": 50851,
+            "totalTokens": 5188723,
+            "avgTokensPerSecond": 49.7
+          },
+          "latest": {
+            "file": "runs/kubectl/2026-10-25_1958.success.local.deepseek-v4-flash-0731.json",
+            "startedAt": "2026-10-25T19:58:25.932Z",
+            "status": "success",
+            "failure": null,
+            "score": 0.895
+          }
+        },
+        {
+          "provider": "local",
+          "model": "qwen3.8-27b",
+          "modes": [
+            "shuffle"
+          ],
+          "runs": 1,
+          "successes": 0,
+          "failures": 1,
+          "score": null,
+          "meanStats": null,
+          "latest": {
+            "file": "runs/kubectl/2026-10-25_1958.failure.local.qwen3.8-27b.json",
+            "startedAt": "2026-10-25T19:58:25.942Z",
+            "status": "failure",
+            "failure": "model_errors",
+            "score": null
+          }
+        }
+      ]
+    }
+  ]
 }
